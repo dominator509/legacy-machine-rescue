@@ -7,6 +7,9 @@ def main(argv=None):
     ap.add_argument("image")
     ap.add_argument("--json", action="store_true", help="print the raw inventory as JSON")
     ap.add_argument("--boot-result", help="JSON file from the emulator boot step")
+    ap.add_argument("--boot", action="store_true", help="boot the image in QEMU and record evidence")
+    ap.add_argument("--evidence-dir", default="evidence", help="where boot screenshots go")
+    ap.add_argument("--seconds", type=int, default=25)
     ap.add_argument("-o", "--out", help="write runbook markdown here")
     a = ap.parse_args(argv)
     try:
@@ -19,6 +22,11 @@ def main(argv=None):
         print(json.dumps(rep, indent=2))
         return 0
     boot = json.load(open(a.boot_result)) if a.boot_result else None
+    if a.boot:
+        from . import boot as bootmod
+        boot = bootmod.run(a.image, a.evidence_dir, seconds=a.seconds)
+        boot["emulator"] = boot["emulator"].split(" (")[0]
+        json.dump(boot, open(a.evidence_dir + "/boot.json", "w"), indent=2)
     md = runbook.build(rep, boot)
     if a.out:
         open(a.out, "w").write(md)
