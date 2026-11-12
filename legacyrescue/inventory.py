@@ -95,7 +95,7 @@ def inspect(path):
             "boot_files_missing": [n for n in ("IO.SYS", "COMMAND.COM") if not present[n]] if os_name.startswith("MS-DOS") or "Windows" in os_name else [],
             "config_files": {k: c[:4000] for k, c in cfg.items()},
         })
-    if not any(vl["os"] != "Unknown" for vl in rep["volumes"]):
+    if rep["volumes"] and not any(vl["os"] != "Unknown" for vl in rep["volumes"]):
         rep["warnings"].append("No recognised DOS/Windows 9x boot file set was found.")
     rep["cnc_files"] = rep["cnc_files"][:40]
     return rep
