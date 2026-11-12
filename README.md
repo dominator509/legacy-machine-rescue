@@ -12,6 +12,8 @@ Requires Python 3.8+ and QEMU (`qemu-system-x86_64`). If QEMU is unpacked outsid
     python -m legacyrescue disk.img                       # inventory + runbook (no emulator)
     python -m legacyrescue disk.img --boot --html report.html -o runbook.md
 
+Web app: `python -m legacyrescue.web 8080` then open http://127.0.0.1:8080 (upload an image, get the report).
+
 Supported input: raw floppy or hard-disk images (FAT12/16/32, MBR), fixed VHD. Dynamic VHD, VMDK, QCOW2 and NTFS are detected but not read (the tool says so).
 The source image is never modified (the emulator runs in snapshot mode, with no network).
 
