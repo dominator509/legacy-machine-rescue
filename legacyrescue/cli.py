@@ -10,6 +10,7 @@ def main(argv=None):
     ap.add_argument("--boot", action="store_true", help="boot the image in QEMU and record evidence")
     ap.add_argument("--evidence-dir", default="evidence", help="where boot screenshots go")
     ap.add_argument("--seconds", type=int, default=25)
+    ap.add_argument("--html", help="write a retro CRT HTML report here")
     ap.add_argument("-o", "--out", help="write runbook markdown here")
     a = ap.parse_args(argv)
     try:
@@ -28,6 +29,9 @@ def main(argv=None):
         boot["emulator"] = boot["emulator"].split(" (")[0]
         json.dump(boot, open(a.evidence_dir + "/boot.json", "w"), indent=2)
     md = runbook.build(rep, boot)
+    if a.html:
+        from . import report
+        report.build(rep, boot, md, a.html)
     if a.out:
         open(a.out, "w").write(md)
     else:
