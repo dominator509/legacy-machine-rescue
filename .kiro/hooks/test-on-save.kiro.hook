@@ -1,0 +1,8 @@
+{
+  "enabled": true,
+  "name": "Run tests on Python save",
+  "description": "When a source or test file changes, run the unit tests and fix any failure before moving on.",
+  "version": "1",
+  "when": { "type": "fileEdited", "patterns": ["legacyrescue/**/*.py", "tests/**/*.py"] },
+  "then": { "type": "askAgent", "prompt": "Run `python -m unittest` and report the result. If anything fails, find the cause and fix it, then re-run." }
+}

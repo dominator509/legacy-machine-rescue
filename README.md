@@ -28,4 +28,8 @@ Evidence table (MEASURED / EMULATOR / NOT PROVEN), risks (dongle drivers, motion
 
 The corpus uses the free FreeDOS 1.3 images (GPL) and images derived from them, including a clearly labelled synthetic CNC-style disk and negative controls (blank, wiped boot sector, random bytes). No real shop data is used.
 
+Sample report (static): docs/index.html, also served by GitHub Pages when enabled.
+
+Demo capture: `python -m tools_demo.capture disk.img demo.mp4 25` boots the image for real and records a video from real screen captures.
+
 License: MIT.

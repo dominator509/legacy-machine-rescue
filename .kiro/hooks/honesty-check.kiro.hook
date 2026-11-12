@@ -1,0 +1,8 @@
+{
+  "enabled": true,
+  "name": "Honesty check on reports and docs",
+  "description": "Make sure no text claims real hardware compatibility.",
+  "version": "1",
+  "when": { "type": "fileEdited", "patterns": ["legacyrescue/runbook.py", "legacyrescue/report.py", "README.md"] },
+  "then": { "type": "askAgent", "prompt": "Read the edited file against .kiro/steering/product.md. Confirm that it still says an emulator boot does not prove real motion card, dongle, serial or controller compatibility, and that nothing overclaims. Fix any overclaim." }
+}
