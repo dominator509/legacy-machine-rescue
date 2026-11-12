@@ -1,2 +1,4 @@
-images/*.zip
+images/
+qemu/
+out/
 __pycache__/
