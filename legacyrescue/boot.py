@@ -87,10 +87,18 @@ def run(image, outdir, seconds=25, drive="auto", memory=32, cpu="pentium"):
             if "error" in r:
                 raise RuntimeError(str(r))
             time.sleep(0.3)
+            tp = os.path.join(outdir, "t%02d.vram" % m)
+            r2 = q.cmd("pmemsave", val=0xB8000, size=4000, filename=tp)
+            text = None
+            if "error" not in r2:
+                time.sleep(0.2)
+                raw = open(tp, "rb").read()
+                text = "\n".join(raw[i:i + 160:2].decode("cp437", "replace").rstrip() for i in range(0, 4000, 160)).rstrip()
+                os.remove(tp)
             png = os.path.join(outdir, "t%02d.png" % m)
             w, h = _png(ppm, png)
             os.remove(ppm)
-            shots.append({"t": m, "png": png, "w": w, "h": h})
+            shots.append({"t": m, "png": png, "w": w, "h": h, "text": text})
         q.cmd("quit")
     finally:
         try:
@@ -98,5 +106,26 @@ def run(image, outdir, seconds=25, drive="auto", memory=32, cpu="pentium"):
         except subprocess.TimeoutExpired:
             p.kill()
         shutil.rmtree(tmp, ignore_errors=True)
-    return {"emulator": "QEMU 6.2 (TCG, %s, %d MB, no network)" % (cpu, memory), "drive": drive,
+    verdict = judge(shots)
+    return {**verdict, "emulator": "QEMU 6.2 (TCG, %s, %d MB, no network)" % (cpu, memory), "drive": drive,
             "screenshots": shots, "serial_log": serial, "cmdline": " ".join(args[:1] + args[len(extra) + 1:])}
+
+
+BAD = ("no bootable", "boot failed", "non-system disk", "invalid system disk", "missing operating system",
+       "operating system not found", "disk boot failure", "press a key to reboot", "error loading", "no boot device")
+
+
+def judge(shots):
+    """Decide from real evidence: text on screen at the end and whether it changed.
+    A DOS-family OS reaching a prompt/menu counts as booted. This is emulator evidence only."""
+    last = (shots[-1].get("text") or "") if shots else ""
+    low = last.lower()
+    bad = [b for b in BAD if b in low]
+    if bad:
+        return {"booted": False, "evidence": "screen shows '%s'" % bad[0]}
+    if not last.strip():
+        return {"booted": False, "evidence": "screen stayed blank (graphics mode or no output; check screenshots)"}
+    if "seabios" in low and len(low.split()) < 40:
+        return {"booted": False, "evidence": "stopped at BIOS screen"}
+    first_line = next((l.strip() for l in last.splitlines() if l.strip()), "")
+    return {"booted": True, "evidence": "OS output on screen after %ds: '%s'" % (shots[-1]["t"], first_line[:60])}
