@@ -28,11 +28,31 @@ def _find(files, name):
 def inspect(path):
     data, info = img.load(path)
     rep = {"image": info, "partitions": img.partitions(data), "volumes": [], "warnings": [],
-           "hardware_flags": [], "cnc_files": []}
+           "hardware_flags": [], "cnc_files": [], "unreadable_volumes": []}
+    
+    # Get readable FAT volumes
     vols = img.volumes(data)
-    if not vols:
+    
+    # Get unreadable volumes (NTFS, exFAT, Unknown)
+    unreadable = img.unreadable(data)
+    rep["unreadable_volumes"] = unreadable
+    
+    if not vols and not unreadable:
         rep["warnings"].append("No readable FAT volume found. NTFS, exFAT, Linux or unknown "
                                "formats are not parsed; the image may still boot in an emulator.")
+    elif not vols and unreadable:
+        # We have unreadable volumes but no FAT volumes
+        fs_types = [v["fs"] for v in unreadable]
+        warnings = []
+        if "NTFS" in fs_types:
+            warnings.append("NTFS volume detected (not readable)")
+        if "exFAT" in fs_types:
+            warnings.append("exFAT volume detected (not readable)")
+        if "Unknown" in fs_types:
+            warnings.append("Unknown filesystem detected (not readable)")
+        if warnings:
+            rep["warnings"].extend(warnings)
+    
     mbr_hint = img.boot_code_hint(data, 0)
     rep["boot_sector_hint"] = mbr_hint
     for desc, v in vols:

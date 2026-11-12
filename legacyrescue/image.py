@@ -55,6 +55,82 @@ def volumes(data):
     return vols
 
 
+def detect_filesystem_at_offset(data, offset=0):
+    """Detect filesystem type at given byte offset.
+    
+    Returns: "FAT12", "FAT16", "FAT32", "NTFS", "exFAT", or "Unknown"
+    """
+    # Extract boot sector
+    sector = data[offset:offset + 512]
+    if len(sector) < 512:
+        return "Unknown"
+    
+    # Check bytes 3:11 for NTFS/exFAT signatures
+    oem = sector[3:11]
+    if oem == b"NTFS    ":
+        return "NTFS"
+    if oem == b"EXFAT   ":
+        return "exFAT"
+    
+    # Try FAT detection via structural BPB parsing
+    try:
+        fat = FatVolume(data, offset)
+        return fat.kind  # "FAT12", "FAT16", or "FAT32"
+    except FatError:
+        return "Unknown"
+
+
+def unreadable(data):
+    """Detect unreadable (non-FAT) volumes.
+    
+    Returns list of dictionaries with detection results for NTFS, exFAT, 
+    and unknown filesystems. FAT volumes are not included.
+    """
+    detected = []
+    
+    # First, check for valid bare FAT image (preserve early return behavior)
+    try:
+        FatVolume(data, 0)
+        return detected  # Valid FAT at offset 0, no unreadable volumes
+    except FatError:
+        pass  # Not a bare FAT floppy
+    
+    # Check if we have valid MBR partitions
+    part_list = partitions(data)
+    
+    if not part_list:
+        # No MBR partitions, check whole image for non-FAT filesystems
+        fs_type = detect_filesystem_at_offset(data, 0)
+        if fs_type in ("NTFS", "exFAT", "Unknown"):
+            sector = data[0:512] if len(data) >= 512 else b""
+            oem = sector[3:11].decode("ascii", "ignore").strip() if len(sector) >= 11 else ""
+            detected.append({
+                "where": "whole image",
+                "fs": fs_type,
+                "status": "detected, not readable",
+                "oem": oem
+            })
+        return detected
+    
+    # Check partitions
+    for p in part_list:
+        offset = p["lba"] * 512
+        fs_type = detect_filesystem_at_offset(data, offset)
+        
+        if fs_type in ("NTFS", "exFAT", "Unknown"):
+            desc = f"partition {p['index']} ({p['type_name']})"
+            sector = data[offset:offset + 512] if len(data) >= offset + 512 else b""
+            oem = sector[3:11].decode("ascii", "ignore").strip() if len(sector) >= 11 else ""
+            detected.append({
+                "where": desc,
+                "fs": fs_type,
+                "status": "detected, not readable",
+                "oem": oem
+            })
+    
+    return detected
+
+
 def boot_code_hint(data, offset=0):
     b = data[offset:offset + 512]
     t = b.decode("latin-1")
