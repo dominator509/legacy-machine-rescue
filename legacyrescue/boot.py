@@ -21,6 +21,7 @@ def qemu_cmd():
 
 
 MAX_SCREEN_PIXELS = 4096 * 4096
+TEXT_BIOS_MODES = frozenset([0, 1, 2, 3, 7])
 GRAPHICS_BIOS_MODES = frozenset([4, 5, 6, 13, 14, 15, 16, 17, 18, 19])
 
 
@@ -180,6 +181,10 @@ def judge(shots):
                 "evidence": "nonblank graphics output in BIOS video mode 0x%02x after %ds; "
                             "OS boot and Win9x identity are not proven (inspect screenshot)" %
                             (video_mode, frame["t"])}
+    if video_mode not in TEXT_BIOS_MODES:
+        return {"booted": False, "graphics_output": False, "boot_status": "unverified",
+                "evidence": "no confirmed text-mode boot; graphics are blank or video mode is unverified "
+                            "(VRAM text may be stale; inspect screenshots)"}
     if not last.strip():
         return {"booted": False, "graphics_output": False,
                 "evidence": "no confirmed text boot; screen blank or graphics mode unverified (check screenshots)"}

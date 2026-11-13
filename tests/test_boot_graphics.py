@@ -59,8 +59,21 @@ class BootGraphicsTests(unittest.TestCase):
         self.assertFalse(boot.judge([{"t": 25, "text": "SeaBIOS version test"}])["booted"])
 
     def test_text_boot_and_empty_input_preserve_existing_behavior(self):
-        self.assertTrue(boot.judge([{"t": 25, "text": "FreeDOS\nC:\\>"}])["booted"])
+        self.assertTrue(boot.judge([{"t": 25, "text": "FreeDOS\nC:\\>", "bios_video_mode": 3}])["booted"])
         self.assertFalse(boot.judge([])["booted"])
+
+    def test_stale_text_cannot_prove_boot_in_graphics_or_unverified_modes(self):
+        for mode in [4, 5, 6, 13, 14, 15, 16, 17, 18, 19, None, 255]:
+            for nonblank in [False, True]:
+                with self.subTest(mode=mode, nonblank=nonblank):
+                    result = boot.judge([{"t": 25, "text": "FreeDOS\nC:\\>",
+                                         "bios_video_mode": mode,
+                                         "pixels": {"nonblank": nonblank}}])
+                    self.assertFalse(result["booted"])
+                    self.assertEqual(result["boot_status"], "unverified")
+        for mode in boot.TEXT_BIOS_MODES:
+            self.assertTrue(boot.judge([{"t": 25, "text": "FreeDOS\nC:\\>",
+                                        "bios_video_mode": mode}])["booted"])
 
     def test_malformed_pixel_inputs_are_clear_errors(self):
         cases = [b"", b"P6\n0 1\n255\n", b"P6\n999999 999999\n255\n",
