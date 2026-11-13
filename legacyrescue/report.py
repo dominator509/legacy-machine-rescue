@@ -43,4 +43,5 @@ def build(rep, boot, md, out):
         last = boot["screenshots"][-1].get("text") if boot.get("screenshots") else ""
         h.append("<h2>&gt; SCREEN TEXT READ FROM THE GUEST</h2><pre>%s</pre>" % html.escape(last or ""))
     h.append("<h2>&gt; RECOVERY RUNBOOK</h2><pre>%s</pre></div></div>" % html.escape(md))
-    open(out, "w").write("\n".join(h))
+    with open(out, "w", encoding="utf-8") as f:
+        f.write("\n".join(h))

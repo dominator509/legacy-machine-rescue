@@ -12,7 +12,7 @@ Requires Python 3.8+. The optional emulator boot also requires QEMU (`qemu-syste
     python -m legacyrescue disk.img                       # inventory + runbook (no emulator)
     python -m legacyrescue disk.img --boot --html report.html -o runbook.md
 
-Web app: `python -m legacyrescue.web 8080` then open http://127.0.0.1:8080 (upload an image, get the report). The current web upload handler imports `cgi`, which was removed from Python 3.13; the web app does not currently start on Python 3.13 or newer. This does not affect the command-line inventory path.
+Web app: `python -m legacyrescue.web 8080` then open http://127.0.0.1:8080 (upload an image, get the report). The stdlib-only server also accepts `PORT` when no positional port is supplied; it binds to loopback only. `GET /health` returns JSON status. Upload requests are limited to 256 MiB including multipart overhead, and emulator boot is opt-in, not enabled by default. The upload handler does not use the removed `cgi` module. No hosted deployment is implied by this local command.
 
 Supported input: raw floppy or hard-disk images (FAT12/16/32, MBR), fixed VHD, and dynamic VHD up to a 256 MiB virtual size cap (the dynamic VHD footer, header and block allocation table are parsed and validated; a larger or malformed dynamic VHD is rejected with a clear error instead of being read). VMDK, QCOW2 and differencing VHD are rejected (not read). NTFS and exFAT are detected and reported by name but not read (no files are listed; the tool says so). Unknown filesystems are reported as not readable. A successful emulator boot does not prove physical hardware compatibility.
 The source image is never modified (the emulator runs in snapshot mode, with no network).
