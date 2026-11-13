@@ -5,3 +5,5 @@ Capture the BIOS Data Area video-mode byte at 0x449 through QMP pmemsave. Combin
 Return graphics_output=true with booted=false,boot_status=unverified. The HTML badge and runbook distinguish this from both confirmed text boot and did-not-boot. No Win9x likely claim is made.
 
 Source reference for the BDA field: https://www.stanislavs.org/helppc/video_information.html (40:49 current video mode, equivalent to physical0x449).
+
+The emulator version is read from the actual executable, not a hardcoded version label. Integration fixtures use only synthetic16bit boot-sector code and never identify an OS.

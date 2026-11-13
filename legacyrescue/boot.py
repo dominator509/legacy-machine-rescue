@@ -95,6 +95,10 @@ class Qmp:
 def run(image, outdir, seconds=25, drive="auto", memory=32, cpu="pentium"):
     os.makedirs(outdir, exist_ok=True)
     exe, extra, env = qemu_cmd()
+    version_result = subprocess.run([exe, "--version"], env=env, capture_output=True,
+                                    text=True, timeout=10)
+    version_line = version_result.stdout.splitlines()[0] if version_result.stdout else ""
+    emulator_version = version_line if version_result.returncode == 0 and version_line.startswith("QEMU") else "QEMU (version unverified)"
     size = os.path.getsize(image)
     if drive == "auto":
         drive = "floppy" if size <= 2949120 else "hd"
@@ -152,7 +156,7 @@ def run(image, outdir, seconds=25, drive="auto", memory=32, cpu="pentium"):
             p.kill()
         shutil.rmtree(tmp, ignore_errors=True)
     verdict = judge(shots)
-    return {**verdict, "emulator": "QEMU 6.2 (TCG, %s, %d MB, no network)" % (cpu, memory), "drive": drive,
+    return {**verdict, "emulator": "%s (TCG, %s, %d MB, no network)" % (emulator_version, cpu, memory), "drive": drive,
             "screenshots": shots, "serial_log": serial, "cmdline": " ".join(args[:1] + args[len(extra) + 1:])}
 
 

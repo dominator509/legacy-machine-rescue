@@ -89,6 +89,14 @@ class BootGraphicsTests(unittest.TestCase):
         self.assertNotIn("BOOTED IN EMULATOR", text)
         self.assertNotIn("DID NOT BOOT", text)
 
+    def test_real_integration_fixtures_are_explicit_synthetic_boot_sectors(self):
+        from tools_demo.verify_graphics import synthetic_image
+        for kind in ["graphics", "uniform", "no-boot"]:
+            data = synthetic_image(kind)
+            self.assertEqual(len(data), 1474560)
+            self.assertEqual(data[510:512], b"\x55\xaa" if kind != "no-boot" else b"\x00\x00")
+        self.assertNotEqual(synthetic_image("graphics"), synthetic_image("uniform"))
+
     def test_seeded_uniform_images_never_prove_graphics(self):
         import random
         rng = random.Random(41)
