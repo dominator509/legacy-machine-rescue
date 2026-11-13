@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Legacy Machine Rescue (browser version)</title>
+<style>
+body{margin:0;background:#06140b;color:#33ff66;font:16px/1.5 "DejaVu Sans Mono",Consolas,monospace}
+.wrap{max-width:900px;margin:0 auto;padding:24px}
+.crt{border:2px solid #1f8a3f;border-radius:10px;padding:20px;background:#08200f;box-shadow:0 0 24px #0b5a24 inset}
+h1{margin:0 0 8px;font-size:26px;letter-spacing:2px;text-shadow:0 0 6px #33ff66}
+.warn{border:1px solid #ffb000;color:#ffb000;padding:10px;margin:14px 0}
+button{background:#33ff66;color:#06140b;border:0;padding:8px 16px;font:inherit;font-weight:bold;cursor:pointer;margin-right:8px}
+button:disabled{opacity:.4;cursor:default}
+#status{margin:12px 0;min-height:1.5em}
+iframe{width:100%;height:700px;border:1px solid #1f8a3f;background:#fff;margin-top:12px;display:none}
+a{color:#7dffa0}
+.sub{color:#7dd99a;font-size:14px}
+</style></head><body><div class="wrap"><div class="crt">
+<h1>LEGACY MACHINE RESCUE</h1>
+<div class="sub">Browser version: disk inventory and recovery runbook</div>
+<div class="warn"><b>Read this first.</b> This page reads the disk image and writes the runbook. It does <b>not</b> boot the image: the emulator boot test needs the command-line tool (<code>python -m legacyrescue disk.img --boot</code>), which is in the code repository. An emulator boot would also not prove the real motion card, dongle, serial/DNC link or CNC controller works.</div>
+<p>Pick a disk image (raw floppy or hard-disk image, fixed VHD, up to 64 MB), or run the built-in synthetic sample. Your file stays in your browser. Nothing is uploaded.</p>
+<p><input type="file" id="file"> <button id="run" disabled>RUN</button> <button id="sample" disabled>RUN SAMPLE DISK</button></p>
+<div id="status">Loading the Python runtime (about 10 MB, first visit only)...</div>
+<p id="dl" style="display:none"><button id="dlmd">DOWNLOAD RUNBOOK (.md)</button> <button id="dlhtml">DOWNLOAD REPORT (.html)</button></p>
+<iframe id="out" title="report" sandbox=""></iframe>
+<p class="sub">Code (MIT): <a href="https://github.com/dominator509/legacy-machine-rescue">github.com/dominator509/legacy-machine-rescue</a>. Pyodide (MPL-2.0) is loaded from the jsDelivr CDN.</p>
+</div></div>
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+let py, last = {md: "", html: ""};
+const MAX = 64 * 1024 * 1024;
+async function init() {
+  try {
+    py = await loadPyodide();
+    const mods = await (await fetch("py/manifest.json")).json();
+    py.FS.mkdirTree("/lib/legacyrescue");
+    for (const m of mods) {
+      const t = await (await fetch("py/legacyrescue/" + m + ".py")).text();
+      py.FS.writeFile("/lib/legacyrescue/" + m + ".py", t);
+    }
+    py.runPython("import sys; sys.path.insert(0, '/lib')");
+    $("status").textContent = "Ready.";
+    $("run").disabled = false; $("sample").disabled = false;
+    if (location.search.includes("autorun=sample")) runSample();
+  } catch (e) { $("status").textContent = "Could not start: " + e; }
+}
+async function analyse(bytes, name) {
+  if (bytes.length > MAX) { $("status").textContent = "File is larger than 64 MB. Use the command-line tool for big disks."; return; }
+  $("status").textContent = "Reading " + name + " ...";
+  py.FS.writeFile("/tmp/upload.img", bytes);
+  py.globals.set("img_name", name);
+  const res = py.runPython(`
+import json, hashlib
+from legacyrescue import inventory, runbook, report
+def go():
+    rep = inventory.inspect("/tmp/upload.img")
+    rep["image"]["path"] = img_name
+    rep["image"]["sha256"] = runbook.sha256("/tmp/upload.img")
+    md = runbook.build(rep, None)
+    report.build(rep, None, md, "/tmp/report.html")
+    return json.dumps({"md": md, "html": open("/tmp/report.html").read()})
+try:
+    out = go()
+except (ValueError, OSError) as e:
+    out = json.dumps({"error": str(e)})
+out
+`);
+  const r = JSON.parse(res);
+  if (r.error) { $("status").textContent = "Error: " + r.error; return; }
+  last = r;
+  $("out").style.display = "block"; $("out").srcdoc = r.html;
+  $("dl").style.display = "block";
+  $("status").textContent = "Done: " + name + ". No emulator boot was run in the browser.";
+}
+async function runFile() {
+  const f = $("file").files[0];
+  if (!f) { $("status").textContent = "Pick a file first."; return; }
+  await analyse(new Uint8Array(await f.arrayBuffer()), f.name);
+}
+async function runSample() {
+  await analyse(new Uint8Array(await (await fetch("sample.img")).arrayBuffer()), "synthetic-sample.img");
+}
+function save(name, text, type) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([text], {type})); a.download = name; a.click();
+}
+$("run").onclick = runFile; $("sample").onclick = runSample;
+$("dlmd").onclick = () => save("runbook.md", last.md, "text/markdown");
+$("dlhtml").onclick = () => save("report.html", last.html, "text/html");
+init();
+</script></body></html>
