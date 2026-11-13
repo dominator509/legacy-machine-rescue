@@ -20,9 +20,10 @@ def build(rep, boot, md, out):
     f = []
     for s in (boot or {}).get("screenshots", []):
         b = base64.b64encode(open(s["png"], "rb").read()).decode()
-        f.append('<figure><img alt="emulator frame at %ds" src="data:image/png;base64,%s"><figcaption>Real emulator frame, t+%ds</figcaption></figure>' % (s["t"], b, s["t"]))
+        f.append('<figure><img alt="screenshot at %ds" src="data:image/png;base64,%s"><figcaption>Captured screenshot, t+%ds</figcaption></figure>' % (s["t"], b, s["t"]))
     v = rep["volumes"][0] if rep["volumes"] else None
-    badge = "NOT RUN" if not boot else ("BOOTED IN EMULATOR" if boot["booted"] else "DID NOT BOOT")
+    badge = ("NOT RUN" if not boot else "GRAPHICS OUTPUT - BOOT UNVERIFIED"
+             if boot.get("graphics_output") else "BOOTED IN EMULATOR" if boot["booted"] else "DID NOT BOOT")
     
     # Format filesystem badge text
     if v is not None:
@@ -43,4 +44,5 @@ def build(rep, boot, md, out):
         last = boot["screenshots"][-1].get("text") if boot.get("screenshots") else ""
         h.append("<h2>&gt; SCREEN TEXT READ FROM THE GUEST</h2><pre>%s</pre>" % html.escape(last or ""))
     h.append("<h2>&gt; RECOVERY RUNBOOK</h2><pre>%s</pre></div></div>" % html.escape(md))
-    open(out, "w").write("\n".join(h))
+    with open(out, "w", encoding="utf-8") as f:
+        f.write("\n".join(h))

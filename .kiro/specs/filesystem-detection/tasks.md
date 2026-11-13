@@ -1,5 +1,14 @@
 # Tasks: Filesystem Detection
 
+> **STATUS: Plan below is superseded by what actually shipped.**
+> This document originally proposed `detect_all_volumes()` returning a
+> per-volume `unsupported` flag, consumed by `inventory.inspect()`, with
+> tests in `tests/test_filesystem_detection.py`. That is not what was
+> built. The task list and function/file names below are kept for
+> history; do not use them to look up the real code. See "As Shipped"
+> at the end of this file for the actual function names, file, and test
+> coverage.
+
 ## Overview
 Implement NTFS, exFAT, and unknown filesystem detection from boot-sector signatures. Add detection, inventory labels, and synthetic tests. Preserve existing FAT detection unchanged. Ensure truthful report/runbook output for unsupported filesystems.
 
@@ -178,3 +187,44 @@ graph TD
 - **Not included**: NTFS/exFAT filesystem readers, GPT partition support
 - **Consumer changes**: Minimal branches in report.py and runbook.py only
 - **Truthfulness**: Critical for "MEASURED"/"NOT PROVEN" labeling integrity
+
+## As Shipped (accurate, read the code to confirm)
+
+The implementation that actually landed differs from the plan above in
+naming and shape, though it covers the same detection goal:
+
+- `legacyrescue/image.py`:
+  - `detect_filesystem_at_offset(data, offset=0)`  -  matches the planned
+    function; returns `"FAT12"`/`"FAT16"`/`"FAT32"`/`"NTFS"`/`"exFAT"`/`"Unknown"`.
+  - `unreadable(data)`  -  **not** `detect_all_volumes()`. Returns a list of
+    dicts (`where`, `fs`, `status`, `oem`) only for non-FAT volumes
+    (NTFS/exFAT/Unknown). It does not return an entry per volume with an
+    `unsupported` bool; FAT volumes are simply omitted from its output.
+  - `volumes()` is unchanged, as planned.
+- `legacyrescue/inventory.py`:
+  - `inspect()` calls `img.unreadable(data)` and stores the result under
+    the report key `unreadable_volumes` (**not** a per-volume
+    `unsupported` flag). Readable FAT volumes still come from
+    `img.volumes(data)`, handled separately from `unreadable_volumes`.
+  - Warning text branches on whether `unreadable_volumes`/`vols` are
+    empty, e.g. "No readable FAT volume found..." and per-filesystem
+    messages when NTFS/exFAT are present.
+- `legacyrescue/report.py` and `legacyrescue/runbook.py` read
+  `unreadable_volumes` to render "(detected, not readable)" wording;
+  there is no `v.get("unsupported")` branch because volume dicts for
+  unreadable filesystems are a separate list, not a flag on a unified
+  per-volume dict.
+- Tests: `tests/test_detection.py` (**not**
+  `tests/test_filesystem_detection.py`). Actual test functions:
+  `test_bare_fat_early_return`, `test_fat_with_partition_like_bytes`,
+  `test_malformed_ntfs_signature`, `test_malformed_exfat_signature`,
+  `test_truncated_unknown_input`, `test_exact_unknown_raw`,
+  `test_exact_unknown_partition`, `test_mixed_fat_unreadable_inventory`,
+  `test_runbook_truthfulness_unreadable`,
+  `test_unreadable_only_no_dos_warning`, `test_report_html_escaping`.
+  Together with `tests/test_fixtures.py`, these cover NTFS/exFAT detection and malformed signatures,
+  truncated input, bare-FAT preservation, mixed FAT + unreadable
+  inventories, and runbook/report wording  -  they do not claim or test
+  "no crash on any input" as a guarantee; `tests/test_fuzz.py` also checks only its generated inputs, not a universal guarantee.
+- Verified by running `python -m unittest discover -s tests -t .` from
+  the repo root: 133 tests ran, 0 failures, 2 skipped (the FreeDOS boot-image test in `tests/test_core.py` and the damaged-image fuzz test in `tests/test_fuzz.py` require a missing FreeDOS image).

@@ -17,6 +17,40 @@ HW_PATTERNS = [
 CNC_NAMES = re.compile(r"mach[23]|fanuc|haas|mazak|heidenhain|okuma|mastercam|surfcam|edgecam|gibbs|cncpro|fadal|bridgeport|dnc|gcode|\.nc$|\.tap$|\.ngc$|\.mpf$", re.I)
 
 
+# These are inventory hints, never execution or compatibility checks. Match the
+# basename only: a directory called DNC must not label every file inside it.
+CNC_FILE_RULES = [
+    ("Serial/DNC transfer", re.compile(r"dnc|serial|kermit|procomm|telix|xmodem|zmodem|cimco", re.I),
+     (".exe", ".com", ".bat", ".ini", ".cfg"), "filename suggests a serial/DNC transfer tool or its settings"),
+    ("Controller configuration", re.compile(r"fanuc|haas|mazak|heidenhain|okuma|fadal|cnc|control|param", re.I),
+     (".ini", ".cfg", ".cnf", ".par", ".dat"), "filename suggests controller or CNC settings"),
+    ("Hardware key / dongle driver", re.compile(r"hasp|sentinel|rockey|dongle|hardlock|sensilock|wibu|codemeter|safenet|hlvdd", re.I),
+     (".sys", ".exe", ".com", ".drv", ".vxd", ".386", ".dll"), "filename suggests a hardware-key driver or utility"),
+    ("Motion/IO control card driver", re.compile(r"motion|servo|encoder|galil|deltatau|pmac|smartcnc|dmc", re.I),
+     (".sys", ".exe", ".com", ".drv", ".vxd", ".386", ".dll"), "filename suggests a motion/IO driver or utility"),
+]
+PROGRAM_EXTENSIONS = (".nc", ".tap", ".ngc", ".mpf")
+HARDWARE_CHECK_NOTE = "Needs real hardware check; filename/extension match only, not proof the software works."
+
+
+def cnc_file_findings(path, where=""):
+    """Return explicit, explainable filename/extension hints for one file."""
+    name = path.replace("\\", "/").rsplit("/", 1)[-1]
+    extension = "." + name.rsplit(".", 1)[-1].lower() if "." in name else ""
+    findings = []
+    for category, pattern, extensions, reason in CNC_FILE_RULES:
+        match = pattern.search(name)
+        if extension in extensions and match:
+            findings.append({"path": path, "where": where, "category": category,
+                             "reason": reason + " (matched '%s')" % match.group(0),
+                             "matched_by": "filename", "note": HARDWARE_CHECK_NOTE})
+    if extension in PROGRAM_EXTENSIONS:
+        findings.append({"path": path, "where": where, "category": "Possible CNC program",
+                         "reason": "file extension %s may contain a CNC program" % extension,
+                         "matched_by": "extension", "note": HARDWARE_CHECK_NOTE})
+    return findings
+
+
 def _find(files, name):
     n = name.lower()
     for p, e in files:
@@ -28,7 +62,7 @@ def _find(files, name):
 def inspect(path):
     data, info = img.load(path)
     rep = {"image": info, "partitions": img.partitions(data), "volumes": [], "warnings": [],
-           "hardware_flags": [], "cnc_files": [], "unreadable_volumes": []}
+           "hardware_flags": [], "cnc_files": [], "cnc_findings": [], "unreadable_volumes": []}
     
     # Get readable FAT volumes
     vols = img.volumes(data)
@@ -83,7 +117,10 @@ def inspect(path):
             for label, rx in HW_PATTERNS[:3]:
                 if rx.search(e["name"]) and low.endswith((".sys", ".exe", ".com", ".drv", ".vxd", ".386", ".dll")):
                     flags.setdefault(label, []).append("file " + p)
-            if CNC_NAMES.search(p):
+            findings = cnc_file_findings(p, desc)
+            rep["cnc_findings"].extend(findings)
+            basename = p.replace("\\", "/").rsplit("/", 1)[-1]
+            if findings or CNC_NAMES.search(basename):
                 rep["cnc_files"].append(p)
         for k, vv in flags.items():
             rep["hardware_flags"].append({"category": k, "evidence": sorted(set(vv))[:6]})

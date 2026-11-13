@@ -18,9 +18,16 @@ def build(rep, boot=None):
     info = rep["image"]
     a("# Recovery runbook")
     a("")
-    a("Image: `%s`  " % info["path"].split("/")[-1])
-    a("Size: %d bytes (%s)  " % (info["size"], info["container"]))
+    a("Image: `%s`" % info["path"].split("/")[-1])
+    a("Size: %d bytes (%s)" % (info["size"], info["container"]))
     a("SHA-256: `%s`" % info.get("sha256", "n/a"))
+    a("")
+    a("## Before you touch the machine")
+    a("")
+    a("- Do not write to the original drive. Make a sector-level copy first, keep the original labelled, and verify the copy against the recorded SHA-256 before recovery work.")
+    a("- Record the controller settings, BIOS settings and serial/DNC settings before changing anything. Keep an offline copy of the settings and recovery image.")
+    a("- Photograph every cable, port, card, jumper and hardware key in place. Label connections before disconnecting them.")
+    a("- Have a qualified technician put the machine in a safe state before physical work. An emulator result is not permission to energize or move the machine.")
     a("")
     a("## 1. Evidence summary")
     a("")
@@ -41,6 +48,9 @@ def build(rep, boot=None):
         a("| Filesystem readable | FAILED |")
     if boot is None:
         a("| Image boots in emulator | NOT RUN |")
+    elif boot.get("graphics_output"):
+        a("| Graphics output in %s | EMULATOR: %s |" % (boot["emulator"], boot["evidence"]))
+        a("| OS boot and Win9x identity | NOT PROVEN |")
     elif boot.get("booted"):
         a("| Image boots in %s | EMULATOR: %s |" % (boot["emulator"], boot["evidence"]))
     else:
@@ -57,8 +67,24 @@ def build(rep, boot=None):
         a("- No hardware-dependent drivers or files matched the keyword checks. This is not a guarantee.")
     for f in rep["hardware_flags"]:
         a("- **%s** (check on real machine). Evidence: %s" % (f["category"], "; ".join(f["evidence"])))
+    for finding in rep.get("cnc_findings", []):
+        a("- **%s**: `%s` (%s). Reason: %s. %s" % (
+            finding["category"], finding["path"], finding["where"],
+            finding["reason"], finding["note"]))
     if rep["cnc_files"]:
-        a("- Possible CNC-related files: " + ", ".join(rep["cnc_files"][:10]))
+        a("- Possible CNC-related files (filename/extension hints only): " + ", ".join(rep["cnc_files"][:10]))
+    a("")
+    a("## Not proven by emulator")
+    a("")
+    findings = rep.get("cnc_findings", [])
+    if findings:
+        for finding in findings:
+            a("- %s: `%s` (%s). NOT PROVEN: %s" % (
+                finding["category"], finding["path"], finding["where"], finding["note"]))
+    for flag in rep["hardware_flags"]:
+        a("- %s: %s. NOT PROVEN: requires a check on the real machine." % (
+            flag["category"], "; ".join(flag["evidence"])))
+    a("- Real motion/IO, hardware key/licensing, serial/DNC transfer and controller operation remain NOT PROVEN even when no matching filename was found. The inventory rules are incomplete hints, not an absence check.")
     a("")
     a("## 3. Steps")
     a("")

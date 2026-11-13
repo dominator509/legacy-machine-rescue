@@ -36,11 +36,18 @@ def frames(image, d, seconds, every=0.5):
         q.cmd("pmemsave", val=0xB8000, size=4000, filename=tp); time.sleep(0.3)
         raw = open(tp, "rb").read()
         text = "\n".join(raw[i:i + 160:2].decode("cp437", "replace").rstrip() for i in range(0, 4000, 160)).rstrip()
+        mp = os.path.join(d, "mode.bin")
+        mode_result = q.cmd("pmemsave", val=0x449, size=1, filename=mp)
+        mode = None
+        if "error" not in mode_result:
+            with open(mp, "rb") as mode_file:
+                data = mode_file.read(2)
+            mode = data[0] if len(data) == 1 else None
         q.cmd("quit")
     finally:
         try: p.wait(timeout=5)
         except subprocess.TimeoutExpired: p.kill()
-    return shots, text
+    return shots, text, mode
 
 
 def card(path, lines, color="33ff66"):
@@ -58,8 +65,8 @@ def main():
     d = tempfile.mkdtemp(prefix="lmr-cap-")
     try:
         rep = inventory.inspect(image)
-        shots, text = frames(image, d, secs)
-        b = boot.judge([{"t": secs, "text": text}])
+        shots, text, mode = frames(image, d, secs)
+        b = boot.judge([{"t": secs, "text": text, "bios_video_mode": mode}])
         v = rep["volumes"][0] if rep["volumes"] else {}
         name = os.path.basename(image)
         card(d + "/title.png", ["LEGACY MACHINE RESCUE", "", "Old CNC PC dies. Production stops.", "", "Image: " + name,
@@ -67,7 +74,7 @@ def main():
         card(d + "/scan.png", ["STEP 1: READ THE DISK", "", "Filesystem: %s" % v.get("fs"), "Files: %s" % v.get("files"),
                                "OS (from file names): %s" % v.get("os"), "",
                                *["Risk: " + h["category"] for h in rep["hardware_flags"][:5]]])
-        end = ["STEP 3: RESULT", "", "Emulator boot: %s" % ("BOOTED" if b["booted"] else "DID NOT BOOT"), b["evidence"][:70], "",
+        end = ["STEP 3: RESULT", "", "Emulator boot: %s" % ("BOOTED" if b["booted"] else "UNVERIFIED" if b.get("boot_status") == "unverified" else "DID NOT BOOT"), b["evidence"][:70], "",
                "NOT PROVEN: real motion card, dongle,", "serial/DNC link, CNC controller.", "", "A recovery runbook was written."]
         card(d + "/end.png", end, "ffb000")
         # build segments
