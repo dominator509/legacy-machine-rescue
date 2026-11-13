@@ -27,10 +27,16 @@ def build(rep, boot=None):
     a("| Claim | Status |")
     a("| --- | --- |")
     vols = rep["volumes"]
+    unreadable = rep.get("unreadable_volumes", [])
+    
     if vols:
         v = vols[0]
         a("| Filesystem %s, %d files readable | MEASURED |" % (v["fs"], v["files"]))
         a("| OS guess: %s | MEASURED (file names only) |" % v["os"])
+    elif unreadable:
+        v = unreadable[0]
+        a("| Filesystem %s detected | NOT READABLE |" % v["fs"])
+        # No OS guess line for unreadable volumes
     else:
         a("| Filesystem readable | FAILED |")
     if boot is None:
@@ -85,4 +91,11 @@ def build(rep, boot=None):
         a("  - Boot files present: " + (", ".join(v["boot_files_present"]) or "none"))
         for n in v["config_files"]:
             a("  - Has config file: " + n)
+    
+    if unreadable:
+        a("")
+        a("## 5. Unreadable volumes detected")
+        a("")
+        for v in unreadable:
+            a("- %s: %s (detected, not readable)" % (v["where"], v["fs"]))
     return "\n".join(L) + "\n"

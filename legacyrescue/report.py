@@ -23,9 +23,20 @@ def build(rep, boot, md, out):
         f.append('<figure><img alt="emulator frame at %ds" src="data:image/png;base64,%s"><figcaption>Real emulator frame, t+%ds</figcaption></figure>' % (s["t"], b, s["t"]))
     v = rep["volumes"][0] if rep["volumes"] else None
     badge = "NOT RUN" if not boot else ("BOOTED IN EMULATOR" if boot["booted"] else "DID NOT BOOT")
+    
+    # Format filesystem badge text
+    if v is not None:
+        fs_text = v["fs"] + ", " + str(v["files"]) + " files"
+    elif rep.get("unreadable_volumes"):
+        # Show first unreadable volume detection
+        uv = rep["unreadable_volumes"][0]
+        fs_text = uv["fs"] + " " + uv["status"]
+    else:
+        fs_text = "no readable filesystem"
+    
     h = ["<!doctype html><meta charset=utf-8><title>Legacy Machine Rescue report</title><style>%s</style>" % CSS,
          '<div class=wrap><div class=crt><h1>LEGACY MACHINE RESCUE</h1><div class=sub>%s</div>' % html.escape(rep["image"]["path"].split("/")[-1]),
-         '<span class=badge>%s</span><span class=badge>%s</span>' % (badge, html.escape(v["fs"] + ", " + str(v["files"]) + " files" if v else "no readable filesystem")),
+         '<span class=badge>%s</span><span class=badge>%s</span>' % (badge, html.escape(fs_text)),
          '<div class=warn>EMULATOR RESULT ONLY. This does not prove the real motion card, dongle, serial/DNC link or CNC controller will work.</div>']
     if boot:
         h.append("<h2>&gt; EMULATOR BOOT</h2><p>%s. %s</p><div class=frames>%s</div>" % (html.escape(boot["emulator"]), html.escape(boot["evidence"]), "".join(f)))
