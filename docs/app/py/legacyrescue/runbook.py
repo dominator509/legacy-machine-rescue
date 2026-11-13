@@ -57,8 +57,12 @@ def build(rep, boot=None):
         a("- No hardware-dependent drivers or files matched the keyword checks. This is not a guarantee.")
     for f in rep["hardware_flags"]:
         a("- **%s** (check on real machine). Evidence: %s" % (f["category"], "; ".join(f["evidence"])))
+    for finding in rep.get("cnc_findings", []):
+        a("- **%s**: `%s` (%s). Reason: %s. %s" % (
+            finding["category"], finding["path"], finding["where"],
+            finding["reason"], finding["note"]))
     if rep["cnc_files"]:
-        a("- Possible CNC-related files: " + ", ".join(rep["cnc_files"][:10]))
+        a("- Possible CNC-related files (filename/extension hints only): " + ", ".join(rep["cnc_files"][:10]))
     a("")
     a("## 3. Steps")
     a("")
