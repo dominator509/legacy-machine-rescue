@@ -1,20 +1,20 @@
 # Legacy Machine Rescue
 
-Many machine shops still run CNC machines from Windows 98 or DOS PCs. When that disk dies, production stops. This tool takes a disk image, checks it, boots it in an emulator, and writes a recovery runbook.
+Many machine shops still run CNC machines from Windows 98 or DOS PCs. When that disk dies, production stops. This tool checks a disk image, optionally boots it in an emulator, and writes a recovery runbook.
 
-**What it proves:** the disk contents were read, and the image did or did not start in a PC emulator (QEMU), with screenshots and the text on the guest screen as evidence.
-**What it does not prove:** that the real motion card, hardware key (dongle), serial/DNC link or CNC controller will work. Every report says so. Those items are listed as risks to check on the real machine.
+**What it proves:** inventory (always run) reads the disk's partitions and supported filesystems and reports what is really on it. Emulator boot (optional, `--boot`) additionally shows whether the image starts in a PC emulator (QEMU), with screenshots and the guest screen text as evidence.
+**What it does not prove:** neither inventory nor an emulator boot proves that the real motion card, hardware key (dongle), serial/DNC link or CNC controller works. Every report says so. Those items are listed as risks to check on the real machine.
 
 ## Use
 
-Requires Python 3.8+ and QEMU (`qemu-system-x86_64`). If QEMU is unpacked outside the system path, set `LEGACYRESCUE_QEMU_ROOT` to the unpacked root.
+Requires Python 3.8+. The optional emulator boot also requires QEMU (`qemu-system-x86_64`). If QEMU is unpacked outside the system path, set `LEGACYRESCUE_QEMU_ROOT` to the unpacked root.
 
     python -m legacyrescue disk.img                       # inventory + runbook (no emulator)
     python -m legacyrescue disk.img --boot --html report.html -o runbook.md
 
-Web app: `python -m legacyrescue.web 8080` then open http://127.0.0.1:8080 (upload an image, get the report).
+Web app: `python -m legacyrescue.web 8080` then open http://127.0.0.1:8080 (upload an image, get the report). The current web upload handler imports `cgi`, which was removed from Python 3.13; the web app does not currently start on Python 3.13 or newer. This does not affect the command-line inventory path.
 
-Supported input: raw floppy or hard-disk images (FAT12/16/32, MBR), fixed VHD. Dynamic VHD, VMDK, QCOW2 and NTFS are detected but not read (the tool says so).
+Supported input: raw floppy or hard-disk images (FAT12/16/32, MBR), fixed VHD, and dynamic VHD up to a 256 MiB virtual size cap (the dynamic VHD footer, header and block allocation table are parsed and validated; a larger or malformed dynamic VHD is rejected with a clear error instead of being read). VMDK, QCOW2 and differencing VHD are rejected (not read). NTFS and exFAT are detected and reported by name but not read (no files are listed; the tool says so). Unknown filesystems are reported as not readable. A successful emulator boot does not prove physical hardware compatibility.
 The source image is never modified (the emulator runs in snapshot mode, with no network).
 
 ## What the runbook contains

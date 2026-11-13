@@ -358,3 +358,22 @@ Final task 29 depends on all prior tasks.
 - Every property-based test task references its design.md property number and the requirements it validates, per the Property Annotation Format.
 - Tasks 1-24 must preserve `load()`'s existing raw/fixed/rejection behavior byte-for-byte for all non-type-3/non-type-4 inputs; task 24's dispatch rewiring is the only change to the existing branches, and it is limited to windowing/ordering corrections described in design.md.
 - Tasks 26-29 are fixture-only tasks (no test assertions); test-case tasks (30, 31, 33) depend on them.
+
+### Status note on unchecked optional (`*`) boxes
+
+Several optional sub-tasks above (e.g. 3.1, 6.1, 7.1/7.2, 11.1/11.2,
+12.1/12.2, 13.1/13.2, 14.1, 16.1/16.2, 17.1, 21.1/21.2, 23.1/23.2,
+24.1/24.2/24.3) are left unchecked in this file even though
+`tests/test_dynamic_vhd.py` contains corresponding test classes/functions
+(spot-checked: `TestReadHeadTailWindows`, `TestParseFooter`,
+`TestFooterPairConsistent`, `TestFooterPairConsistentProperty`,
+`TestParseHeader`, `TestValidateBatCapacity`,
+`TestIntervalConstructionAndDisjointness`, and others by matching class
+name to task). The checkboxes were not kept in sync with the test file
+as work landed. These boxes are intentionally left unchecked
+here rather than blanket-checked, because this note is based on a
+class-name spot check, not a line-by-line re-verification of every
+optional box's exact scope against its test body. Before relying on this
+list, re-run `python -m unittest discover -s tests -t .` (133 tests
+ran, 0 failures, 2 missing-image skips, as of this note) and check the
+specific test class/function named in the task you care about.
