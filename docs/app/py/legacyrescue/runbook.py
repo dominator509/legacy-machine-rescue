@@ -48,6 +48,9 @@ def build(rep, boot=None):
         a("| Filesystem readable | FAILED |")
     if boot is None:
         a("| Image boots in emulator | NOT RUN |")
+    elif boot.get("graphics_output"):
+        a("| Graphics output in %s | EMULATOR: %s |" % (boot["emulator"], boot["evidence"]))
+        a("| OS boot and Win9x identity | NOT PROVEN |")
     elif boot.get("booted"):
         a("| Image boots in %s | EMULATOR: %s |" % (boot["emulator"], boot["evidence"]))
     else:

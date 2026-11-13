@@ -20,9 +20,10 @@ def build(rep, boot, md, out):
     f = []
     for s in (boot or {}).get("screenshots", []):
         b = base64.b64encode(open(s["png"], "rb").read()).decode()
-        f.append('<figure><img alt="emulator frame at %ds" src="data:image/png;base64,%s"><figcaption>Real emulator frame, t+%ds</figcaption></figure>' % (s["t"], b, s["t"]))
+        f.append('<figure><img alt="screenshot at %ds" src="data:image/png;base64,%s"><figcaption>Captured screenshot, t+%ds</figcaption></figure>' % (s["t"], b, s["t"]))
     v = rep["volumes"][0] if rep["volumes"] else None
-    badge = "NOT RUN" if not boot else ("BOOTED IN EMULATOR" if boot["booted"] else "DID NOT BOOT")
+    badge = ("NOT RUN" if not boot else "GRAPHICS OUTPUT - BOOT UNVERIFIED"
+             if boot.get("graphics_output") else "BOOTED IN EMULATOR" if boot["booted"] else "DID NOT BOOT")
     
     # Format filesystem badge text
     if v is not None:

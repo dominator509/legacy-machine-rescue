@@ -2,6 +2,7 @@
 Evidence = a real VGA screendump (PPM->PNG) plus the text of the screen, captured
 over QMP. The source image is never modified (snapshot mode)."""
 import json, os, shutil, socket, subprocess, tempfile, time, zlib, struct
+from collections import Counter
 
 
 def qemu_cmd():
@@ -19,17 +20,50 @@ def qemu_cmd():
     return exe, args_extra, env
 
 
+MAX_SCREEN_PIXELS = 4096 * 4096
+GRAPHICS_BIOS_MODES = frozenset([4, 5, 6, 13, 14, 15, 16, 17, 18, 19])
+
+
+def _read_ppm(path):
+    """Read QEMU's P6 RGB8 screendump with explicit dimension/byte bounds."""
+    with open(path, "rb") as f:
+        data = f.read(MAX_SCREEN_PIXELS * 3 + 4097)
+    parts = data.split(b"\n", 3)
+    try:
+        if len(parts) != 4 or parts[0].strip() != b"P6" or parts[2].strip() != b"255":
+            raise ValueError("expected P6 RGB8 screenshot")
+        width, height = map(int, parts[1].split())
+    except (ValueError, TypeError):
+        raise ValueError("invalid QEMU screenshot header") from None
+    if width <= 0 or height <= 0 or width * height > MAX_SCREEN_PIXELS:
+        raise ValueError("screenshot dimensions exceed limit")
+    pixels = parts[3]
+    if len(pixels) != width * height * 3:
+        raise ValueError("screenshot pixel data is truncated or oversized")
+    return width, height, pixels
+
+
+def pixel_evidence(ppm_path):
+    width, height, pixels = _read_ppm(ppm_path)
+    count = width * height
+    step = max(1, (count + 65535) // 65536)
+    colors = Counter(pixels[i * 3:i * 3 + 3] for i in range(0, count, step))
+    sampled = sum(colors.values())
+    minority = sampled - max(colors.values())
+    return {"sampled_pixels": sampled, "sampled_colors": len(colors),
+            "nonbackground_pixels": minority,
+            "nonblank": minority >= max(64, (sampled + 99) // 100)}
+
+
 def _png(ppm_path, png_path):
-    d = open(ppm_path, "rb").read()
-    parts = d.split(b"\n", 3)
-    w, h = map(int, parts[1].split())
-    pix = parts[3]
+    w, h, pix = _read_ppm(ppm_path)
     raw = b"".join(b"\x00" + pix[y * w * 3:(y + 1) * w * 3] for y in range(h))
     def ch(t, b):
         c = struct.pack(">I", len(b)) + t + b
         return c + struct.pack(">I", zlib.crc32(t + b) & 0xFFFFFFFF)
-    open(png_path, "wb").write(b"\x89PNG\r\n\x1a\n" + ch(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0))
-                               + ch(b"IDAT", zlib.compress(raw, 9)) + ch(b"IEND", b""))
+    with open(png_path, "wb") as f:
+        f.write(b"\x89PNG\r\n\x1a\n" + ch(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0))
+                + ch(b"IDAT", zlib.compress(raw, 9)) + ch(b"IEND", b""))
     return w, h
 
 
@@ -95,10 +129,21 @@ def run(image, outdir, seconds=25, drive="auto", memory=32, cpu="pentium"):
                 raw = open(tp, "rb").read()
                 text = "\n".join(raw[i:i + 160:2].decode("cp437", "replace").rstrip() for i in range(0, 4000, 160)).rstrip()
                 os.remove(tp)
+            mode_path = os.path.join(outdir, "t%02d.mode" % m)
+            mode_result = q.cmd("pmemsave", val=0x449, size=1, filename=mode_path)
+            video_mode = None
+            if "error" not in mode_result:
+                with open(mode_path, "rb") as mode_file:
+                    mode_bytes = mode_file.read(2)
+                if len(mode_bytes) == 1:
+                    video_mode = mode_bytes[0]
+                os.remove(mode_path)
+            pixels = pixel_evidence(ppm)
             png = os.path.join(outdir, "t%02d.png" % m)
             w, h = _png(ppm, png)
             os.remove(ppm)
-            shots.append({"t": m, "png": png, "w": w, "h": h, "text": text})
+            shots.append({"t": m, "png": png, "w": w, "h": h, "text": text,
+                          "bios_video_mode": video_mode, "pixels": pixels})
         q.cmd("quit")
     finally:
         try:
@@ -123,8 +168,17 @@ def judge(shots):
     bad = [b for b in BAD if b in low]
     if bad:
         return {"booted": False, "evidence": "screen shows '%s'" % bad[0]}
+    frame = shots[-1] if shots else {}
+    video_mode = frame.get("bios_video_mode")
+    pixels = frame.get("pixels", {})
+    if video_mode in GRAPHICS_BIOS_MODES and pixels.get("nonblank"):
+        return {"booted": False, "graphics_output": True, "boot_status": "unverified",
+                "evidence": "nonblank graphics output in BIOS video mode 0x%02x after %ds; "
+                            "OS boot and Win9x identity are not proven (inspect screenshot)" %
+                            (video_mode, frame["t"])}
     if not last.strip():
-        return {"booted": False, "evidence": "screen stayed blank (graphics mode or no output; check screenshots)"}
+        return {"booted": False, "graphics_output": False,
+                "evidence": "no confirmed text boot; screen blank or graphics mode unverified (check screenshots)"}
     if "seabios" in low and len(low.split()) < 40:
         return {"booted": False, "evidence": "stopped at BIOS screen"}
     first_line = next((l.strip() for l in last.splitlines() if l.strip()), "")
