@@ -30,11 +30,23 @@ CNC_FILE_RULES = [
      (".sys", ".exe", ".com", ".drv", ".vxd", ".386", ".dll"), "filename suggests a motion/IO driver or utility"),
 ]
 PROGRAM_EXTENSIONS = (".nc", ".tap", ".ngc", ".mpf")
-HARDWARE_CHECK_NOTE = "Needs real hardware check; filename/extension match only, not proof the software works."
+HEIDENHAIN_SIGNATURE_BYTES = 8192
+HEIDENHAIN_BEGIN = re.compile(r"(?im)^\s*(?:\d+\s+)?BEGIN\s+PGM\b")
+HEIDENHAIN_BODY = re.compile(r"(?im)^\s*(?:\d+\s+)?(?:TOOL\s+CALL|CYCL\s+DEF)\b")
+HARDWARE_CHECK_NOTE = "Needs real hardware check; filename/extension or Heidenhain signature match only, not proof the software works."
 
 
-def cnc_file_findings(path, where=""):
-    """Return explicit, explainable filename/extension hints for one file."""
+def heidenhain_program_signature(content):
+    """Recognize a narrow Heidenhain Klartext header plus machining command."""
+    if isinstance(content, bytes):
+        text = content.decode("cp437", "replace")
+    else:
+        text = str(content)
+    return bool(HEIDENHAIN_BEGIN.search(text) and HEIDENHAIN_BODY.search(text))
+
+
+def cnc_file_findings(path, where="", content=None):
+    """Return explainable filename/extension hints and a narrow Heidenhain signature hint."""
     name = path.replace("\\", "/").rsplit("/", 1)[-1]
     extension = "." + name.rsplit(".", 1)[-1].lower() if "." in name else ""
     findings = []
@@ -48,6 +60,10 @@ def cnc_file_findings(path, where=""):
         findings.append({"path": path, "where": where, "category": "Possible CNC program",
                          "reason": "file extension %s may contain a CNC program" % extension,
                          "matched_by": "extension", "note": HARDWARE_CHECK_NOTE})
+    if extension == ".h" and content is not None and heidenhain_program_signature(content):
+        findings.append({"path": path, "where": where, "category": "Possible CNC program",
+                         "reason": "file content has a Heidenhain Klartext program header and machining command",
+                         "matched_by": "content", "note": HARDWARE_CHECK_NOTE})
     return findings
 
 
@@ -117,9 +133,10 @@ def inspect(path):
             for label, rx in HW_PATTERNS[:3]:
                 if rx.search(e["name"]) and low.endswith((".sys", ".exe", ".com", ".drv", ".vxd", ".386", ".dll")):
                     flags.setdefault(label, []).append("file " + p)
-            findings = cnc_file_findings(p, desc)
-            rep["cnc_findings"].extend(findings)
             basename = p.replace("\\", "/").rsplit("/", 1)[-1]
+            content_prefix = v.read(e, max_bytes=HEIDENHAIN_SIGNATURE_BYTES) if basename.lower().endswith(".h") else None
+            findings = cnc_file_findings(p, desc, content_prefix)
+            rep["cnc_findings"].extend(findings)
             if findings or CNC_NAMES.search(basename):
                 rep["cnc_files"].append(p)
         for k, vv in flags.items():
