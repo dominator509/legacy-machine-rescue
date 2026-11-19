@@ -7,6 +7,44 @@ from tests import fixtures
 
 
 class CncInventoryTests(unittest.TestCase):
+    def test_heidenhain_h_program_signature_is_detected_without_broad_h_suffix_matching(self):
+        program = (b"0 BEGIN PGM DRILL MM\n"
+                   b"10 TOOL CALL 10 Z S1247\n"
+                   b"18 CYCL DEF 200 DRILLING\n"
+                   b"24 M30\n"
+                   b"25 END PGM DRILL MM\n")
+        result = inventory.cnc_file_findings("/PARTS/DRILL.H", content=program)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["category"], "Possible CNC program")
+        self.assertEqual(result[0]["matched_by"], "content")
+        self.assertIn("Heidenhain", result[0]["reason"])
+        self.assertIn("not proof the software works", result[0]["note"])
+
+        for path, content in [
+            ("/INCLUDE/MOTOR.H", b"#ifndef MOTOR_H\n#define MOTOR_H\n"),
+            ("/INCLUDE/DRILL.H", b"BEGIN PGM DRILL MM\nL X+0 Y+0 FMAX\nEND PGM DRILL MM\n"),
+            ("/PARTS/DRILL.H", None),
+            ("/PARTS/DRILL.HPP", program),
+        ]:
+            with self.subTest(path=path):
+                self.assertEqual(inventory.cnc_file_findings(path, content=content), [])
+
+    def test_inspect_reports_heidenhain_signature_in_fat_image(self):
+        program = (b"0 BEGIN PGM DRILL MM\n"
+                   b"10 TOOL CALL 10 Z S1247\n"
+                   b"18 CYCL DEF 200 DRILLING\n"
+                   b"24 M30\n"
+                   b"25 END PGM DRILL MM\n")
+        data = fixtures.fat12_image({"DRILL.H": program})
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "heidenhain.img")
+            with open(path, "wb") as f:
+                f.write(data)
+            result = inventory.inspect(path)
+        self.assertEqual(len(result["cnc_findings"]), 1)
+        self.assertEqual(result["cnc_findings"][0]["path"], "/DRILL.H")
+        self.assertEqual(result["cnc_findings"][0]["matched_by"], "content")
+
     def test_filename_rules_have_path_reason_and_hardware_warning(self):
         cases = [("/BIN/DNCPLUS.EXE", "Serial/DNC transfer"),
                  ("/SETUP/FANUC.CFG", "Controller configuration"),
@@ -46,7 +84,7 @@ class CncInventoryTests(unittest.TestCase):
             self.assertEqual(inventory.cnc_file_findings(path), [])
 
     def test_no_content_or_directory_lookup(self):
-        # Deliberately pass only a filename; the helper has no content input.
+        # The helper does not open files when no content is explicitly supplied.
         with patch("builtins.open", side_effect=AssertionError("must not read content")):
             self.assertEqual(inventory.cnc_file_findings("ordinary.exe"), [])
             self.assertTrue(inventory.cnc_file_findings("dnc.exe"))
