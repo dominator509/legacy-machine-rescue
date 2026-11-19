@@ -45,6 +45,36 @@ class CncInventoryTests(unittest.TestCase):
         self.assertEqual(result["cnc_findings"][0]["path"], "/DRILL.H")
         self.assertEqual(result["cnc_findings"][0]["matched_by"], "content")
 
+    def test_extensionless_fanuc_o_program_signature_is_narrow(self):
+        program = b"O4321 (demo)\nN10 G00 X0\nN20 G01 X1 F2\nN30 M30\n"
+        result = inventory.cnc_file_findings("/O4321", content=program)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["category"], "Possible CNC program")
+        self.assertEqual(result[0]["matched_by"], "content")
+        self.assertIn("Fanuc", result[0]["reason"])
+        self.assertIn("not proof the software works", result[0]["note"])
+
+        for path, content in [
+            ("/O4321", b"#define O4321 1\nN10 G00 X0\nN20 G01 X1\nN30 M30\n"),
+            ("/O4321", b"O4321\nN10 X0\nN20 X1\nN30 M30\n"),
+            ("/O4321", None),
+            ("/O4321.TXT", program),
+        ]:
+            with self.subTest(path=path):
+                self.assertEqual(inventory.cnc_file_findings(path, content=content), [])
+
+    def test_inspect_reports_extensionless_fanuc_signature_in_fat_image(self):
+        program = b"O4321\nN10 G00 X0\nN20 G01 X1 F2\nN30 M30\n"
+        data = fixtures.fat12_image({"O4321": program})
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "fanuc.img")
+            with open(path, "wb") as f:
+                f.write(data)
+            result = inventory.inspect(path)
+        self.assertEqual(len(result["cnc_findings"]), 1)
+        self.assertEqual(result["cnc_findings"][0]["path"], "/O4321")
+        self.assertEqual(result["cnc_findings"][0]["matched_by"], "content")
+
     def test_filename_rules_have_path_reason_and_hardware_warning(self):
         cases = [("/BIN/DNCPLUS.EXE", "Serial/DNC transfer"),
                  ("/SETUP/FANUC.CFG", "Controller configuration"),
