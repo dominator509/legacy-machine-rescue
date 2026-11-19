@@ -92,7 +92,7 @@ class CncInventoryTests(unittest.TestCase):
                 self.assertIn("not proof the software works", item["note"])
 
     def test_program_extensions_are_case_insensitive(self):
-        for extension in ["NC", "tap", "NgC", "MPF", "GCODE", "ncf", "SSB", "I"]:
+        for extension in ["NC", "tap", "NgC", "MPF", "GCODE", "ncf", "SSB", "I", "EIA", "Min", "spf"]:
             result = inventory.cnc_file_findings("/PARTS/123." + extension)
             self.assertEqual(len(result), 1)
             self.assertEqual(result[0]["matched_by"], "extension")
