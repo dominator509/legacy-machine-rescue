@@ -63,6 +63,21 @@ class CncInventoryTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertEqual(inventory.cnc_file_findings(path, content=content), [])
 
+    def test_extensionless_fanuc_accepts_unumbered_end_after_two_numbered_blocks(self):
+        program = b"%\nO1234 (fixture)\nN10 G00 X0 Y0\nN20 G01 X1 F100\nM30\n%\n"
+        result = inventory.cnc_file_findings("/O1234", content=program)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["matched_by"], "content")
+        self.assertIn("Fanuc", result[0]["reason"])
+
+        for path, content in [
+            ("/O1234", b"O1234\nN10 G00 X0\nM30\n"),
+            ("/O1234", b"O1234\nN10 G00 X0\nN20 G01 X1\n"),
+            ("/O1234.TXT", program),
+        ]:
+            with self.subTest(path=path, content=content):
+                self.assertEqual(inventory.cnc_file_findings(path, content=content), [])
+
     def test_inspect_reports_extensionless_fanuc_signature_in_fat_image(self):
         program = b"O4321\nN10 G00 X0\nN20 G01 X1 F2\nN30 M30\n"
         data = fixtures.fat12_image({"O4321": program})
