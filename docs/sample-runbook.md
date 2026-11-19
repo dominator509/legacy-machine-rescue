@@ -28,12 +28,12 @@ An emulator boot proves the disk contents start. It does not prove real hardware
 - **Hardware key / dongle driver** (check on real machine). Evidence: CONFIG.SYS: HASP
 - **Real-mode memory manager** (check on real machine). Evidence: CONFIG.SYS: HIMEM
 - **Serial/DNC transfer (COM port)** (check on real machine). Evidence: AUTOEXEC.BAT: MODE COM
-- **Possible CNC program**: `/PART1.NC` (whole image). Reason: file extension .nc may contain a CNC program. Needs real hardware check; filename/extension or Heidenhain signature match only, not proof the software works.
-- Possible CNC-related files (filename/extension or Heidenhain content-signature hints only): /PART1.NC
+- **Possible CNC program**: `/PART1.NC` (whole image). Reason: file extension .nc may contain a CNC program. Needs real hardware check; filename/extension or Heidenhain/Fanuc signature match only, not proof the software works.
+- Possible CNC-related files (filename/extension or Heidenhain/Fanuc content-signature hints only): /PART1.NC
 
 ## Not proven by emulator
 
-- Possible CNC program: `/PART1.NC` (whole image). NOT PROVEN: Needs real hardware check; filename/extension or Heidenhain signature match only, not proof the software works.
+- Possible CNC program: `/PART1.NC` (whole image). NOT PROVEN: Needs real hardware check; filename/extension or Heidenhain/Fanuc signature match only, not proof the software works.
 - Hardware key / dongle driver: CONFIG.SYS: HASP. NOT PROVEN: requires a check on the real machine.
 - Real-mode memory manager: CONFIG.SYS: HIMEM. NOT PROVEN: requires a check on the real machine.
 - Serial/DNC transfer (COM port): AUTOEXEC.BAT: MODE COM. NOT PROVEN: requires a check on the real machine.
