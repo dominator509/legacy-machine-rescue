@@ -29,7 +29,7 @@ CNC_FILE_RULES = [
     ("Motion/IO control card driver", re.compile(r"motion|servo|encoder|galil|deltatau|pmac|smartcnc|dmc", re.I),
      (".sys", ".exe", ".com", ".drv", ".vxd", ".386", ".dll"), "filename suggests a motion/IO driver or utility"),
 ]
-PROGRAM_EXTENSIONS = (".nc", ".tap", ".ngc", ".mpf", ".gcode", ".ncf", ".ssb", ".i")
+PROGRAM_EXTENSIONS = (".nc", ".tap", ".ngc", ".mpf", ".gcode", ".ncf", ".ssb", ".i", ".eia", ".min", ".spf")
 HEIDENHAIN_SIGNATURE_BYTES = 8192
 FANUC_SIGNATURE_BYTES = 8192
 HEIDENHAIN_BEGIN = re.compile(r"(?im)^\s*(?:\d+\s+)?BEGIN\s+PGM\b")
