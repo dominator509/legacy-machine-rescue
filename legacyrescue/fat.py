@@ -103,5 +103,24 @@ class FatVolume:
             if e["dir"] and depth < 12 and e["cluster"] >= 2:
                 yield from self.walk(e["cluster"], p, depth + 1)
 
-    def read(self, entry):
-        return self._read_chain(entry["cluster"])[:entry["size"]]
+    def read(self, entry, max_bytes=None):
+        """Read a file, optionally stopping after a bounded prefix."""
+        size = entry["size"]
+        if max_bytes is None:
+            return self._read_chain(entry["cluster"])[:size]
+        remaining = min(size, max(0, int(max_bytes)))
+        if remaining == 0:
+            return b""
+        chunks = []
+        cluster = entry["cluster"]
+        seen = set()
+        while cluster and cluster >= 2 and remaining > 0 and cluster not in seen:
+            seen.add(cluster)
+            data = self._cluster(cluster)
+            if not data:
+                break
+            take = min(remaining, len(data))
+            chunks.append(data[:take])
+            remaining -= take
+            cluster = self._next(cluster) if remaining else None
+        return b"".join(chunks)
