@@ -29,6 +29,17 @@ class CncInventoryTests(unittest.TestCase):
             self.assertEqual(len(result), 1)
             self.assertEqual(result[0]["matched_by"], "extension")
 
+    def test_public_sample_filenames_remain_detectable(self):
+        # Names from the local-only samples recorded in docs/real-sample-validation.md.
+        # The Mazak page does not give the sample a filename, so this is a local alias.
+        cases = ["/TOOLS/tool-length-probe.ngc", "/PROGRAMS/mazak-quick-turn-100-msy.nc"]
+        for path in cases:
+            with self.subTest(path=path):
+                result = inventory.cnc_file_findings(path)
+                self.assertEqual(len(result), 1)
+                self.assertEqual(result[0]["category"], "Possible CNC program")
+                self.assertEqual(result[0]["matched_by"], "extension")
+
     def test_directory_names_do_not_match_files(self):
         for path in ["/DNC/HASP/PMAC/FANUC/readme.txt", "DNC\\HASPVDD\\readme.txt",
                      "/DOCS/HASP.TXT", "/SERIAL/readme.exe", "/PARTS/part.nc.bak"]:
