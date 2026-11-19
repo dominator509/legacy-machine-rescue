@@ -29,7 +29,7 @@ CNC_FILE_RULES = [
     ("Motion/IO control card driver", re.compile(r"motion|servo|encoder|galil|deltatau|pmac|smartcnc|dmc", re.I),
      (".sys", ".exe", ".com", ".drv", ".vxd", ".386", ".dll"), "filename suggests a motion/IO driver or utility"),
 ]
-PROGRAM_EXTENSIONS = (".nc", ".tap", ".ngc", ".mpf")
+PROGRAM_EXTENSIONS = (".nc", ".tap", ".ngc", ".mpf", ".gcode")
 HEIDENHAIN_SIGNATURE_BYTES = 8192
 FANUC_SIGNATURE_BYTES = 8192
 HEIDENHAIN_BEGIN = re.compile(r"(?im)^\s*(?:\d+\s+)?BEGIN\s+PGM\b")
@@ -73,9 +73,14 @@ def cnc_file_findings(path, where="", content=None):
                              "reason": reason + " (matched '%s')" % match.group(0),
                              "matched_by": "filename", "note": HARDWARE_CHECK_NOTE})
     if extension in PROGRAM_EXTENSIONS:
-        findings.append({"path": path, "where": where, "category": "Possible CNC program",
-                         "reason": "file extension %s may contain a CNC program" % extension,
-                         "matched_by": "extension", "note": HARDWARE_CHECK_NOTE})
+        if extension == ".gcode":
+            category = "Possible G-code program"
+            reason = "file extension .gcode may contain a G-code program"
+        else:
+            category = "Possible CNC program"
+            reason = "file extension %s may contain a CNC program" % extension
+        findings.append({"path": path, "where": where, "category": category,
+                         "reason": reason, "matched_by": "extension", "note": HARDWARE_CHECK_NOTE})
     if extension == ".h" and content is not None and heidenhain_program_signature(content):
         findings.append({"path": path, "where": where, "category": "Possible CNC program",
                          "reason": "file content has a Heidenhain Klartext program header and machining command",
