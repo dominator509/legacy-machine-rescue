@@ -92,10 +92,15 @@ class CncInventoryTests(unittest.TestCase):
                 self.assertIn("not proof the software works", item["note"])
 
     def test_program_extensions_are_case_insensitive(self):
-        for extension in ["NC", "tap", "NgC", "MPF"]:
+        for extension in ["NC", "tap", "NgC", "MPF", "GCODE"]:
             result = inventory.cnc_file_findings("/PARTS/123." + extension)
             self.assertEqual(len(result), 1)
             self.assertEqual(result[0]["matched_by"], "extension")
+            if extension.upper() == "GCODE":
+                self.assertEqual(result[0]["category"], "Possible G-code program")
+                self.assertIn("G-code", result[0]["reason"])
+            else:
+                self.assertEqual(result[0]["category"], "Possible CNC program")
 
     def test_public_sample_filenames_remain_detectable(self):
         # Names from the local-only samples recorded in docs/real-sample-validation.md.
