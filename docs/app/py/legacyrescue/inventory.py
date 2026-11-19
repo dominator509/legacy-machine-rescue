@@ -37,7 +37,7 @@ HEIDENHAIN_BODY = re.compile(r"(?im)^\s*(?:\d+\s+)?(?:TOOL\s+CALL|CYCL\s+DEF)\b"
 FANUC_PROGRAM_NAME = re.compile(r"(?i)^O\d{4}$")
 FANUC_PROGRAM_HEADER = re.compile(r"(?im)^\s*O\d{4}\b")
 FANUC_CODE_BLOCK = re.compile(r"(?im)^\s*N\d+\s+[^\r\n]*\b[GM]\d{1,3}\b[^\r\n]*$")
-FANUC_PROGRAM_END = re.compile(r"(?im)^\s*N\d+\s+M(?:30|99)\b")
+FANUC_PROGRAM_END = re.compile(r"(?im)^\s*(?:N\d+\s+)?M(?:30|99)\b")
 HARDWARE_CHECK_NOTE = "Needs real hardware check; filename/extension or Heidenhain/Fanuc signature match only, not proof the software works."
 
 
@@ -51,13 +51,13 @@ def heidenhain_program_signature(content):
 
 
 def fanuc_program_signature(content):
-    """Recognize a narrow numbered Fanuc-style O-program header and G/M blocks."""
+    """Recognize a narrow Fanuc O-number header with numbered G/M blocks and an end code."""
     if isinstance(content, bytes):
         text = content.decode("cp437", "replace")
     else:
         text = str(content)
     return bool(FANUC_PROGRAM_HEADER.search(text)
-                and len(FANUC_CODE_BLOCK.findall(text)) >= 3
+                and len(FANUC_CODE_BLOCK.findall(text)) >= 2
                 and FANUC_PROGRAM_END.search(text))
 
 
