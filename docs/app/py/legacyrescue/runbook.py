@@ -72,7 +72,7 @@ def build(rep, boot=None):
             finding["category"], finding["path"], finding["where"],
             finding["reason"], finding["note"]))
     if rep["cnc_files"]:
-        a("- Possible CNC-related files (filename/extension or Heidenhain content-signature hints only): " + ", ".join(rep["cnc_files"][:10]))
+        a("- Possible CNC-related files (filename/extension or Heidenhain/Fanuc content-signature hints only): " + ", ".join(rep["cnc_files"][:10]))
     a("")
     a("## Not proven by emulator")
     a("")
