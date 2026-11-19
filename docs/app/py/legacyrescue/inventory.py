@@ -31,9 +31,14 @@ CNC_FILE_RULES = [
 ]
 PROGRAM_EXTENSIONS = (".nc", ".tap", ".ngc", ".mpf")
 HEIDENHAIN_SIGNATURE_BYTES = 8192
+FANUC_SIGNATURE_BYTES = 8192
 HEIDENHAIN_BEGIN = re.compile(r"(?im)^\s*(?:\d+\s+)?BEGIN\s+PGM\b")
 HEIDENHAIN_BODY = re.compile(r"(?im)^\s*(?:\d+\s+)?(?:TOOL\s+CALL|CYCL\s+DEF)\b")
-HARDWARE_CHECK_NOTE = "Needs real hardware check; filename/extension or Heidenhain signature match only, not proof the software works."
+FANUC_PROGRAM_NAME = re.compile(r"(?i)^O\d{4}$")
+FANUC_PROGRAM_HEADER = re.compile(r"(?im)^\s*O\d{4}\b")
+FANUC_CODE_BLOCK = re.compile(r"(?im)^\s*N\d+\s+[^\r\n]*\b[GM]\d{1,3}\b[^\r\n]*$")
+FANUC_PROGRAM_END = re.compile(r"(?im)^\s*N\d+\s+M(?:30|99)\b")
+HARDWARE_CHECK_NOTE = "Needs real hardware check; filename/extension or Heidenhain/Fanuc signature match only, not proof the software works."
 
 
 def heidenhain_program_signature(content):
@@ -45,8 +50,19 @@ def heidenhain_program_signature(content):
     return bool(HEIDENHAIN_BEGIN.search(text) and HEIDENHAIN_BODY.search(text))
 
 
+def fanuc_program_signature(content):
+    """Recognize a narrow numbered Fanuc-style O-program header and G/M blocks."""
+    if isinstance(content, bytes):
+        text = content.decode("cp437", "replace")
+    else:
+        text = str(content)
+    return bool(FANUC_PROGRAM_HEADER.search(text)
+                and len(FANUC_CODE_BLOCK.findall(text)) >= 3
+                and FANUC_PROGRAM_END.search(text))
+
+
 def cnc_file_findings(path, where="", content=None):
-    """Return explainable filename/extension hints and a narrow Heidenhain signature hint."""
+    """Return filename/extension hints and narrow Heidenhain/Fanuc signature hints."""
     name = path.replace("\\", "/").rsplit("/", 1)[-1]
     extension = "." + name.rsplit(".", 1)[-1].lower() if "." in name else ""
     findings = []
@@ -63,6 +79,10 @@ def cnc_file_findings(path, where="", content=None):
     if extension == ".h" and content is not None and heidenhain_program_signature(content):
         findings.append({"path": path, "where": where, "category": "Possible CNC program",
                          "reason": "file content has a Heidenhain Klartext program header and machining command",
+                         "matched_by": "content", "note": HARDWARE_CHECK_NOTE})
+    if FANUC_PROGRAM_NAME.fullmatch(name) and content is not None and fanuc_program_signature(content):
+        findings.append({"path": path, "where": where, "category": "Possible CNC program",
+                         "reason": "file content has a Fanuc O-number header and numbered G/M blocks",
                          "matched_by": "content", "note": HARDWARE_CHECK_NOTE})
     return findings
 
@@ -134,7 +154,14 @@ def inspect(path):
                 if rx.search(e["name"]) and low.endswith((".sys", ".exe", ".com", ".drv", ".vxd", ".386", ".dll")):
                     flags.setdefault(label, []).append("file " + p)
             basename = p.replace("\\", "/").rsplit("/", 1)[-1]
-            content_prefix = v.read(e, max_bytes=HEIDENHAIN_SIGNATURE_BYTES) if basename.lower().endswith(".h") else None
+            is_heidenhain_candidate = basename.lower().endswith(".h")
+            is_fanuc_candidate = bool(FANUC_PROGRAM_NAME.fullmatch(basename))
+            if is_heidenhain_candidate:
+                content_prefix = v.read(e, max_bytes=HEIDENHAIN_SIGNATURE_BYTES)
+            elif is_fanuc_candidate:
+                content_prefix = v.read(e, max_bytes=FANUC_SIGNATURE_BYTES)
+            else:
+                content_prefix = None
             findings = cnc_file_findings(p, desc, content_prefix)
             rep["cnc_findings"].extend(findings)
             if findings or CNC_NAMES.search(basename):
