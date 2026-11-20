@@ -14,7 +14,7 @@ HW_PATTERNS = [
     ("Real-mode memory manager", re.compile(r"himem|emm386|qemm|umb|loadhigh|lh\s", re.I)),
     ("CD-ROM / ASPI driver", re.compile(r"mscdex|cdrom|aspi|oakcdrom", re.I)),
 ]
-CNC_NAMES = re.compile(r"mach[23]|fanuc|haas|mazak|heidenhain|okuma|mastercam|surfcam|edgecam|gibbs|cncpro|fadal|bridgeport|turbocnc|estlcam|cncusb|dnc|gcode|\.nc$|\.tap$|\.ngc$|\.mpf$", re.I)
+CNC_NAMES = re.compile(r"mach[23]|fanuc|haas|mazak|heidenhain|okuma|mastercam|surfcam|edgecam|gibbs|cncpro|fadal|bridgeport|turbocnc|estlcam|cncusb|dancad|dnc|gcode|\.nc$|\.tap$|\.ngc$|\.mpf$", re.I)
 
 
 # These are inventory hints, never execution or compatibility checks. Match the
