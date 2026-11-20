@@ -175,6 +175,21 @@ class CncInventoryTests(unittest.TestCase):
             self.assertEqual([(f["category"], f["reason"], f["matched_by"]) for f in plain],
                              [(f["category"], f["reason"], f["matched_by"]) for f in nested])
 
+    def test_real_software_install_names_are_listed(self):
+        # Basenames observed in real Estlcam and PlanetCNC CNC USB Controller
+        # installations; contents are synthetic placeholders, not real files.
+        data = fixtures.fat12_image({"ESTLCAM.EXE": b"synthetic", "ESTLCAM.DAT": b"synthetic",
+                                     "CNCUSB.EXE": b"synthetic", "SETTINGS.SET": b"synthetic",
+                                     "README.TXT": b"synthetic"})
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "shopsw.img")
+            with open(path, "wb") as f:
+                f.write(data)
+            result = inventory.inspect(path)
+        self.assertIn("/ESTLCAM.EXE", result["cnc_files"])
+        self.assertIn("/CNCUSB.EXE", result["cnc_files"])
+        self.assertNotIn("/README.TXT", result["cnc_files"])
+
     def test_real_synthetic_fat_image_and_runbook_output(self):
         data = fixtures.fat12_image({"DNC.EXE": b"synthetic only", "FANUC.CFG": b"synthetic",
                                      "HASPDOS.SYS": b"synthetic", "PMAC.SYS": b"synthetic",
