@@ -93,6 +93,9 @@ class CncInventoryTests(unittest.TestCase):
     def test_filename_rules_have_path_reason_and_hardware_warning(self):
         cases = [("/BIN/DNCPLUS.EXE", "Serial/DNC transfer"),
                  ("/SETUP/FANUC.CFG", "Controller configuration"),
+                 ("/TCNC/TURBOCNC.INI", "Controller configuration"),
+                 ("/TCNC/MAXNC10.INI", "Controller configuration"),
+                 ("/TCNC/XYLOTEX.INI", "Controller configuration"),
                  ("/DRIVERS/HASPVDD.DLL", "Hardware key / dongle driver"),
                  ("/DRIVERS/PMAC.SYS", "Motion/IO control card driver")]
         for path, category in cases:
