@@ -14,7 +14,7 @@ HW_PATTERNS = [
     ("Real-mode memory manager", re.compile(r"himem|emm386|qemm|umb|loadhigh|lh\s", re.I)),
     ("CD-ROM / ASPI driver", re.compile(r"mscdex|cdrom|aspi|oakcdrom", re.I)),
 ]
-CNC_NAMES = re.compile(r"mach[23]|fanuc|haas|mazak|heidenhain|okuma|mastercam|surfcam|edgecam|gibbs|cncpro|fadal|bridgeport|dnc|gcode|\.nc$|\.tap$|\.ngc$|\.mpf$", re.I)
+CNC_NAMES = re.compile(r"mach[23]|fanuc|haas|mazak|heidenhain|okuma|mastercam|surfcam|edgecam|gibbs|cncpro|fadal|bridgeport|turbocnc|dnc|gcode|\.nc$|\.tap$|\.ngc$|\.mpf$", re.I)
 
 
 # These are inventory hints, never execution or compatibility checks. Match the
@@ -22,7 +22,7 @@ CNC_NAMES = re.compile(r"mach[23]|fanuc|haas|mazak|heidenhain|okuma|mastercam|su
 CNC_FILE_RULES = [
     ("Serial/DNC transfer", re.compile(r"dnc|serial|kermit|procomm|telix|xmodem|zmodem|cimco", re.I),
      (".exe", ".com", ".bat", ".ini", ".cfg"), "filename suggests a serial/DNC transfer tool or its settings"),
-    ("Controller configuration", re.compile(r"fanuc|haas|mazak|heidenhain|okuma|fadal|cnc|control|param", re.I),
+    ("Controller configuration", re.compile(r"fanuc|haas|mazak|heidenhain|okuma|fadal|cnc|control|param|turbocnc|maxnc|xylotex", re.I),
      (".ini", ".cfg", ".cnf", ".par", ".dat"), "filename suggests controller or CNC settings"),
     ("Hardware key / dongle driver", re.compile(r"hasp|sentinel|rockey|dongle|hardlock|sensilock|wibu|codemeter|safenet|hlvdd", re.I),
      (".sys", ".exe", ".com", ".drv", ".vxd", ".386", ".dll"), "filename suggests a hardware-key driver or utility"),
