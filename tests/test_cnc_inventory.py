@@ -107,7 +107,7 @@ class CncInventoryTests(unittest.TestCase):
                 self.assertIn("not proof the software works", item["note"])
 
     def test_program_extensions_are_case_insensitive(self):
-        for extension in ["NC", "tap", "NgC", "MPF", "GCODE", "ncf", "SSB", "I", "EIA", "Min", "spf"]:
+        for extension in ["NC", "tap", "NgC", "MPF", "GCODE", "ncf", "SSB", "I", "EIA", "Min", "spf", "cnc"]:
             result = inventory.cnc_file_findings("/PARTS/123." + extension)
             self.assertEqual(len(result), 1)
             self.assertEqual(result[0]["matched_by"], "extension")
@@ -120,7 +120,8 @@ class CncInventoryTests(unittest.TestCase):
     def test_public_sample_filenames_remain_detectable(self):
         # Names from the local-only samples recorded in docs/real-sample-validation.md.
         # The Mazak page does not give the sample a filename, so this is a local alias.
-        cases = ["/TOOLS/tool-length-probe.ngc", "/PROGRAMS/mazak-quick-turn-100-msy.nc"]
+        cases = ["/TOOLS/tool-length-probe.ngc", "/PROGRAMS/mazak-quick-turn-100-msy.nc",
+                 "/MACROS/TOOLGET.CNC"]
         for path in cases:
             with self.subTest(path=path):
                 result = inventory.cnc_file_findings(path)
