@@ -176,12 +176,16 @@ class CncInventoryTests(unittest.TestCase):
                              [(f["category"], f["reason"], f["matched_by"]) for f in nested])
 
     def test_real_software_install_names_are_listed(self):
-        # Basenames observed in real Estlcam, PlanetCNC CNC USB Controller, and
-        # DANCAD3D distributions; contents are synthetic placeholders, not real files.
+        # Basenames observed in real Estlcam, PlanetCNC CNC USB Controller,
+        # DANCAD3D, and MicroSystems World CNC Controller / EZCnc distributions;
+        # contents are synthetic placeholders, not real files.
         data = fixtures.fat12_image({"ESTLCAM.EXE": b"synthetic", "ESTLCAM.DAT": b"synthetic",
                                      "CNCUSB.EXE": b"synthetic", "SETTINGS.SET": b"synthetic",
                                      "DANCAD3D.COM": b"synthetic", "DANCAD3D.000": b"synthetic",
                                      "SHOW-20X.MAC": b"synthetic", "MANUAL.DOC": b"synthetic",
+                                     "CNC2307L.EXE": b"synthetic", "CNC126.EXE": b"synthetic",
+                                     "CNC2.EXE": b"synthetic", "CNC2.INI": b"synthetic",
+                                     "EZCNC127.EXE": b"synthetic",
                                      "README.TXT": b"synthetic"})
         with tempfile.TemporaryDirectory() as tmp:
             path = os.path.join(tmp, "shopsw.img")
@@ -191,6 +195,10 @@ class CncInventoryTests(unittest.TestCase):
         self.assertIn("/ESTLCAM.EXE", result["cnc_files"])
         self.assertIn("/CNCUSB.EXE", result["cnc_files"])
         self.assertIn("/DANCAD3D.COM", result["cnc_files"])
+        self.assertIn("/CNC2307L.EXE", result["cnc_files"])
+        self.assertIn("/CNC126.EXE", result["cnc_files"])
+        self.assertIn("/CNC2.EXE", result["cnc_files"])
+        self.assertIn("/EZCNC127.EXE", result["cnc_files"])
         self.assertNotIn("/README.TXT", result["cnc_files"])
         self.assertNotIn("/MANUAL.DOC", result["cnc_files"])
 
